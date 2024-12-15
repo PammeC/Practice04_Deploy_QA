@@ -1,103 +1,69 @@
-name: Push-to-EC2
-# Trigger deployment only on push to main branch
+name: Deploy Program02 to EC2
+
 on:
   push:
     branches:
       - main
+
 jobs:
   deploy:
-    name: Deploy to EC2 on main branch push
+    name: Deploy Program02 to EC2
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout the files
-        uses: actions/checkout@v2
-      # Deploy to Server 1
-      - name: Deploy to Server 1
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS1 }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: ${{ secrets.TARGET_DIR }}
-      - name: Executing remote ssh commands on Server 1
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS1 }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo apt-get -y update
-            sudo apt-get install -y nodejs npm
-            node -v
-            npm -v
-            cd ${{ secrets.TARGET_DIR }}
-            nohup node Program02.mjs &
-            
+      # Checkout del código fuente
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Deploy to Server 2
-      - name: Deploy to Server 2
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS2 }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: ${{ secrets.TARGET_DIR }}
-      - name: Executing remote ssh commands on Server 2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS2 }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo apt-get -y update
-            sudo apt-get install -y nodejs npm
-            node -v
-            npm -v
-            cd ${{ secrets.TARGET_DIR }}
-            nohup node Program02.mjs &
+      # Configurar el acceso SSH
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-      # Deploy to Server 3
-      - name: Deploy to Server 3
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS3 }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: ${{ secrets.TARGET_DIR }}
-      - name: Executing remote ssh commands on Server 3
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS3 }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo apt-get -y update
-            sudo apt-get install -y nodejs npm
-            node -v
-            npm -v
-            cd ${{ secrets.TARGET_DIR }}
-            nohup node Program02.mjs &
+      # Desplegar a cada servidor EC2
+      - name: Deploy to EC2 Instance 1
+        run: |
+          ssh-keyscan -H ${{ secrets.HOST_DNS1 }} >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_rsa ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS1 }} << 'EOF'
+            cd /home/${{ secrets.USERNAME }}/Practice04_Deploy_QA
+            git pull origin main
+            npm install
+            # Usar PM2 para iniciar/reiniciar el servidor
+            pm2 start Program02.mjs --name "Practice04" || pm2 restart "Practice04"
+            pm2 save
+          EOF
 
-        # Deploy to Server 4
-      - name: Deploy to Server 4
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS4 }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: ${{ secrets.TARGET_DIR }}
-      - name: Executing remote ssh commands on Server 4
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS4 }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo apt-get -y update
-            sudo apt-get install -y nodejs npm
-            node -v
-            npm -v
-            cd ${{ secrets.TARGET_DIR }}
-            nohup node Program02.mjs &
+      - name: Deploy to EC2 Instance 2
+        run: |
+          ssh-keyscan -H ${{ secrets.HOST_DNS2 }} >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_rsa ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS2 }} << 'EOF'
+            cd /home/${{ secrets.USERNAME }}/Practice04_Deploy_QA
+            git pull origin main
+            npm install
+            pm2 start Program02.mjs --name "Practice04" || pm2 restart "Practice04"
+            pm2 save
+          EOF
 
-            
+      - name: Deploy to EC2 Instance 3
+        run: |
+          ssh-keyscan -H ${{ secrets.HOST_DNS3 }} >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_rsa ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS3 }} << 'EOF'
+            cd /home/${{ secrets.USERNAME }}/Practice04_Deploy_QA
+            git pull origin main
+            npm install
+            pm2 start Program02.mjs --name "Practice04" || pm2 restart "Practice04"
+            pm2 save
+          EOF
+
+      - name: Deploy to EC2 Instance 4
+        run: |
+          ssh-keyscan -H ${{ secrets.HOST_DNS4 }} >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_rsa ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS4 }} << 'EOF'
+            cd /home/${{ secrets.USERNAME }}/Practice04_Deploy_QA
+            git pull origin main
+            npm install
+            pm2 start Program02.mjs --name "Practice04" || pm2 restart "Practice04"
+            pm2 save
+          EOF
