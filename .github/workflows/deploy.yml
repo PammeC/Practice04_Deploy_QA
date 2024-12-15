@@ -1,71 +1,98 @@
-name: Build and Deploy Docker Images
-
+name: Push-to-EC2
+# Trigger deployment only on push to main branch
 on:
   push:
     branches:
-      - qa
-
+      - main
 jobs:
-  build-and-push:
-    name: Build and Push Docker Images
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-      - name: Build and push hello-service
-        run: |
-          docker build ./ -f ./Dockerfile -t ${{ secrets.DOCKER_HUB_USERNAME }}/hello-service:latest
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/hello-service:latest
-
   deploy:
-    name: Deploy to AWS EC2
+    name: Deploy to EC2 on main branch push
     runs-on: ubuntu-latest
-    needs: build-and-push
-    if: ${{ needs.build-and-push.result == 'success' }}
-
     steps:
-      - name: Checkout repository
+      - name: Checkout the files
         uses: actions/checkout@v2
-
-      - name: Setup SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > private.pem
-          chmod 600 private.pem
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v0.1.6
+      # Deploy to Server 1
+      - name: Deploy to Server 1
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS1 }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: ${{ secrets.TARGET_DIR }}
+      - name: Executing remote ssh commands on Server 1
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
+          host: ${{ secrets.HOST_DNS1 }}
+          username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
           script: |
-            # Instalar Docker si no está presente
-            if ! [ -x "$(command -v docker)" ]; then
-              sudo apt-get update
-              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-              sudo apt-get update
-              sudo apt-get install -y docker-ce
-              sudo usermod -aG docker $USER
-            fi
+            sudo apt-get -y update
+            sudo apt-get install -y apache2
+            sudo systemctl start apache2
+            sudo systemctl enable apache2
+            cd home
 
-            # Detener y eliminar contenedores existentes (si los hay)
-            sudo docker stop $(sudo docker ps -q) || true
-            sudo docker rm $(sudo docker ps -aq) || true
+      # Deploy to Server 2
+      - name: Deploy to Server 2
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS2 }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: ${{ secrets.TARGET_DIR }}
+      - name: Executing remote ssh commands on Server 2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS2 }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo apt-get -y update
+            sudo apt-get install -y apache2
+            sudo systemctl start apache2
+            sudo systemctl enable apache2
+            cd home
 
-            # Descargar la última imagen y ejecutar el contenedor
-            sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/hello-service:latest
-            sudo docker run -d --name hello-service -p 8081:5000 ${{ secrets.DOCKER_HUB_USERNAME }}/hello-service:latest
+      # Deploy to Server 3
+      - name: Deploy to Server 3
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS3 }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: ${{ secrets.TARGET_DIR }}
+      - name: Executing remote ssh commands on Server 3
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS3 }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo apt-get -y update
+            sudo apt-get install -y apache2
+            sudo systemctl start apache2
+            sudo systemctl enable apache2
+            cd home
 
-            # Limpiar imágenes no utilizadas
-            sudo docker image prune -af
+        # Deploy to Server 4
+      - name: Deploy to Server 4
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST_DNS4 }}
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: ${{ secrets.TARGET_DIR }}
+      - name: Executing remote ssh commands on Server 4
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS4 }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo apt-get -y update
+            sudo apt-get install -y apache2
+            sudo systemctl start apache2
+            sudo systemctl enable apache2
+            cd home
+
+            
