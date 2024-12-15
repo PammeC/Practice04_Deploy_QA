@@ -9,6 +9,7 @@ app.get('/', (req, res) => {
     <h1>¡Hello world, this is a JavaScript program :D!</h1>
     <h1>CD Deployment of DevOps Actions 🚀</h1>
     <p>111This is a Node.js program that demonstrates how to automate a continuous integration and deployment with docker</p>
+    <h1>Hola Mundo desde $(hostname -f)</h1>
 
   `);
 });
